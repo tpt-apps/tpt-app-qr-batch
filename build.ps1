@@ -56,6 +56,7 @@ $Target = "wasm32-unknown-unknown"
 $OutName = "qr-batch"
 
 $HubDir = Join-Path $PSScriptRoot "dist\hub"
+$DesktopDir = Join-Path $PSScriptRoot "dist\desktop"
 $Dest = if ($WebRepo) { Join-Path $WebRepo "public\apps\qr-batch" } else { $HubDir }
 
 Write-Host "== TPT QR Batch build ==" -ForegroundColor Cyan
@@ -105,10 +106,12 @@ if ($Pro) {
 }
 
 if ($Pro) {
-    Write-Host "-- trunk build --release --features pro --dist dist" -ForegroundColor Cyan
-    trunk build --release --features pro --dist "dist"
+    # Trunk bundles into dist\desktop (never the whole dist tree) so the
+    # free hub bundle in dist\hub survives a -Pro build.
+    Write-Host "-- trunk build --release --features pro --dist dist\desktop" -ForegroundColor Cyan
+    trunk build --release --features pro --dist "dist\desktop"
     if ($LASTEXITCODE -ne 0) { throw "trunk build failed" }
-    $desktopWasm = Get-ChildItem "dist" -Filter "*_bg.wasm" -Recurse | Select-Object -First 1
+    $desktopWasm = Get-ChildItem $DesktopDir -Filter "*_bg.wasm" | Select-Object -First 1
     if ($desktopWasm) { Show-GzipSize -WasmPath $desktopWasm.FullName }
 
     Write-Host "-- cargo build --release -p tpt-qr-desktop (webview exe)" -ForegroundColor Cyan

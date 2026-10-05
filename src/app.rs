@@ -263,6 +263,16 @@ pub fn mount_app(container: &web_sys::Element) -> Result<(), JsValue> {
         dispatch.clone(),
         move || results_actions_view(results_for_actions.clone()),
     )?;
+    #[cfg(feature = "pro")]
+    {
+        let logo_status_for_view = logo_status.clone();
+        mount_reactive(
+            container,
+            ".qrb-logo-live",
+            dispatch.clone(),
+            move || logo_status_view(logo_status_for_view.clone()),
+        )?;
+    }
 
     // The preview <img>: mounted once into its static host, outside every
     // reactive region — regeneration only ever sets its src.
@@ -1026,38 +1036,65 @@ fn results_summary_view(results: Signal<Outcome>) -> UITree<Msg> {
     root.into_only_child().expect("results summary builds one root")
 }
 
-/// Actions region: the download buttons for whichever outcome is live.
+/// Actions region: the download buttons. The DOM backend wires on_click at
+/// mount only (apply_meta_to_element never re-attaches listeners), so this
+/// region renders a FIXED button set with constant messages and toggles
+/// visibility via class — the handlers branch on the current outcome.
 fn results_actions_view(results: Signal<Outcome>) -> UITree<Msg> {
     let outcome = results.get();
+    #[cfg(feature = "pro")]
+    let batch_mode =
+        matches!(&outcome, Outcome::Batch { preview_rows, .. } if !preview_rows.is_empty());
+    #[cfg(feature = "pro")]
+    let single_mode = !matches!(outcome, Outcome::Batch { .. });
+    #[cfg(not(feature = "pro"))]
+    let single_mode = true;
+    #[cfg(not(feature = "pro"))]
+    let _ = &outcome;
+
     let mut root = ContainerBuilder::<Msg>::new();
-    root.container(|actions| match &outcome {
-        Outcome::Single { .. } => {
-            actions
-                .button("Download PNG")
-                .class("qrb-btn qrb-primary")
-                .on_click(Msg::DownloadPng);
-            actions
-                .button("Download SVG")
-                .class("qrb-btn")
-                .on_click(Msg::DownloadSvg);
-        }
+    root.container(|actions| {
+        actions
+            .button("Download PNG")
+            .class(if single_mode {
+                "qrb-btn qrb-primary"
+            } else {
+                "qrb-btn qrb-hidden"
+            })
+            .on_click(Msg::DownloadPng);
+        actions
+            .button("Download SVG")
+            .class(if single_mode { "qrb-btn" } else { "qrb-btn qrb-hidden" })
+            .on_click(Msg::DownloadSvg);
         #[cfg(feature = "pro")]
-        Outcome::Batch { preview_rows, .. } => {
-            if !preview_rows.is_empty() {
-                actions
-                    .button("Download all PNGs (ZIP)")
-                    .class("qrb-btn qrb-primary")
-                    .on_click(Msg::DownloadZip);
-                actions
-                    .button("Export print sheet (PDF)")
-                    .class("qrb-btn")
-                    .on_click(Msg::ExportPdf);
-            }
+        {
+            actions
+                .button("Download all PNGs (ZIP)")
+                .class(if batch_mode {
+                    "qrb-btn qrb-primary"
+                } else {
+                    "qrb-btn qrb-hidden"
+                })
+                .on_click(Msg::DownloadZip);
+            actions
+                .button("Export print sheet (PDF)")
+                .class(if batch_mode { "qrb-btn" } else { "qrb-btn qrb-hidden" })
+                .on_click(Msg::ExportPdf);
         }
-        _ => {}
     })
     .class("qrb-actions");
     root.into_only_child().expect("results actions builds one root")
+}
+
+/// Pro: live logo-status line (upload/clear feedback).
+#[cfg(feature = "pro")]
+fn logo_status_view(status: Signal<String>) -> UITree<Msg> {
+    let mut root = ContainerBuilder::<Msg>::new();
+    root.container(|inner| {
+        inner.text(status.get());
+    })
+    .class("qrb-logo-status");
+    root.into_only_child().expect("logo status builds one root")
 }
 
 // ---------------------------------------------------------------------------

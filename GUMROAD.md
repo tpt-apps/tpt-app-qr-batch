@@ -24,8 +24,9 @@ that changes, update here too (and vice versa).
 
 ## File to upload
 
-Not built yet. Once packaged, this will be the Pro exe/zip produced by the
-app's `build.ps1 -Pro` (or equivalent) — see `todo.md`.
+`release\TPT-QR-Batch-Pro.zip` (built by `./build.ps1 -Pro`; contains the
+single-file `tpt-qr-batch-pro.exe` — the web bundle is embedded in the exe —
+plus a README). The zip is ~0.6 MB.
 
 ## Product name
 
