@@ -1,0 +1,34 @@
+[package]
+name = "tpt-qr-batch-engine"
+version = "0.1.0"
+edition = "2021"
+description = "QR/barcode batch generation engine: encode (qrcodegen + barcoders), raster/SVG rendering, logo/colour branding, CSV batch input, print-ready PDF sheets and ZIP packaging. Pure Rust, no UI deps."
+publish = false
+
+[features]
+default = []
+# Pro edition outputs: logo decoding, print-ready PDF sheets and bulk-PNG
+# ZIP packaging. Compiled out of the free WASM build to keep the hub payload
+# small; enabled by the app crate's `pro` feature.
+pro = ["dep:flate2"]
+
+[dependencies]
+qrcodegen = "1.8"
+# Encoding only — barcoders' optional generators (image/svg/json) are all
+# switched off; rendering lives in this crate.
+barcoders = { version = "2.0", default-features = false }
+# PNG encode (downloads + previews) and decode (Pro logo upload).
+png = "0.17"
+# PDF content-stream compression for the Pro print sheet.
+flate2 = { version = "1", optional = true, default-features = false, features = [
+    "rust_backend",
+] }
+
+[dev-dependencies]
+# Round-trip decode tests: render a code, scan it back, compare payloads.
+# (default features pull in the `image`-crate adapters `PreparedImage`
+# needs; dev-only, so the WASM payload is unaffected)
+rqrr = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }
+# Round-trip extraction test for the stored-ZIP writer.
+zip = { version = "2", default-features = false, features = ["deflate"] }
