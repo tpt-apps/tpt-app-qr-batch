@@ -51,9 +51,8 @@
       round-trips and the logo-upload flow)
 - [x] Desktop shell via `tpt-appfront-webview`; Windows exe build + smoke test
       (single-file exe, bundle embedded at compile time)
-- [ ] Gumroad product from apps.md listing copy ($9), exe upload, URL into
-      registry — manual step, listing copy at apps.md §T2-14 (package ready at
-      `release/TPT-QR-Batch-Pro.zip`)
+- [x] Gumroad product from apps.md listing copy ($9), exe upload — live at
+      https://tpt12.gumroad.com/l/tpt-qr-batch (URL into registry still pending)
 
 ## Phase 4 — Ship & measure
 - [x] Registry entry (`utility` category, `wasm: { entry: '/apps/qr-batch/qr-batch.js' }`)

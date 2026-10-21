@@ -1,5 +1,7 @@
 # Gumroad listing
 
+**Live listing:** https://tpt12.gumroad.com/l/tpt-qr-batch
+
 Everything needed to create/update the Gumroad product once this app is
 built. Source copy is `apps.md` §T2-14 in the `tpt-electrician-nz-2` repo — if
 that changes, update here too (and vice versa).

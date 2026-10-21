@@ -75,6 +75,8 @@ enum Msg {
     #[cfg(feature = "pro")]
     CsvChanged(String),
     #[cfg(feature = "pro")]
+    ClearBatch,
+    #[cfg(feature = "pro")]
     DownloadZip,
     #[cfg(feature = "pro")]
     ExportPdf,
@@ -189,6 +191,11 @@ pub fn mount_app(container: &web_sys::Element) -> Result<(), JsValue> {
                 refresh_batch(&container, &results, &artifacts, &text, current_logo(&logo).as_ref())
             }
             #[cfg(feature = "pro")]
+            Msg::ClearBatch => {
+                write_field(&container, ".qrb-csv", "");
+                refresh_batch(&container, &results, &artifacts, "", current_logo(&logo).as_ref());
+            }
+            #[cfg(feature = "pro")]
             Msg::DownloadZip => export_zip(&container, &artifacts, &logo),
             #[cfg(feature = "pro")]
             Msg::ExportPdf => export_pdf(&container, &artifacts, &logo),
@@ -224,7 +231,7 @@ pub fn mount_app(container: &web_sys::Element) -> Result<(), JsValue> {
     };
 
     // 1. The static shell — mounted exactly once.
-    let shell = shell_tree(&logo_status);
+    let shell = shell_tree();
     let root = tpt_appfront_dom::mount(container, &shell, dispatch.clone())?;
     std::mem::forget(root);
 
@@ -662,9 +669,7 @@ fn plural(count: usize) -> &'static str {
 // views
 // ---------------------------------------------------------------------------
 
-fn shell_tree(logo_status: &Signal<String>) -> UITree<Msg> {
-    #[cfg(not(feature = "pro"))]
-    let _ = logo_status;
+fn shell_tree() -> UITree<Msg> {
     let mut root = ContainerBuilder::<Msg>::new();
 
     root.container(|c| {
@@ -789,12 +794,10 @@ fn shell_tree(logo_status: &Signal<String>) -> UITree<Msg> {
             })
             .class("qrb-actions");
 
+            // Empty host: the reactive `logo_status_view` fills it on mount.
             #[cfg(feature = "pro")]
             card.container(|status| {
-                status.container(|inner| {
-                    inner.text(logo_status_snapshot(logo_status));
-                })
-                .class("qrb-logo-status qrb-logo-live");
+                status.container(|_| {}).class("qrb-logo-live");
             })
             .class("qrb-hint");
         })
@@ -814,7 +817,7 @@ fn shell_tree(logo_status: &Signal<String>) -> UITree<Msg> {
                 actions
                     .button("Clear batch")
                     .class("qrb-btn qrb-ghost")
-                    .on_click(Msg::CsvChanged(String::new()));
+                    .on_click(Msg::ClearBatch);
             })
             .class("qrb-actions");
         })
@@ -899,15 +902,17 @@ fn shell_tree(logo_status: &Signal<String>) -> UITree<Msg> {
                 .class("qrb-upsell-link");
         })
         .class("qrb-card qrb-upsell");
+
+        c.container(|footer| {
+            footer
+                .link("https://tptsolutions.co.nz/tools", "← More TPT tools")
+                .class("qrb-footer-link");
+        })
+        .class("qrb-footer");
     })
     .class("qrb-app");
 
     root.into_only_child().expect("shell builds exactly one root container")
-}
-
-#[cfg(feature = "pro")]
-fn logo_status_snapshot(logo_status: &Signal<String>) -> String {
-    logo_status.get()
 }
 
 fn help_view(help_open: Signal<bool>) -> UITree<Msg> {
@@ -1364,34 +1369,27 @@ fn storage_set(key: &str, value: &str) {
 // ---------------------------------------------------------------------------
 
 const BASE_CSS: &str = r#"
+html, body { margin: 0; background: #12161c; }
 .qrb-app {
-  --qrb-fg: #1b2129;
-  --qrb-muted: #5b6572;
-  --qrb-card: #ffffff;
-  --qrb-page: #f2f4f7;
-  --qrb-border: #d7dce3;
-  --qrb-accent: #0f6ffc;
-  --qrb-accent-ink: #ffffff;
-  --qrb-error: #b3261e;
+  --qrb-fg: #e8ebef;
+  --qrb-muted: #9aa3af;
+  --qrb-card: #1a2029;
+  --qrb-page: #12161c;
+  --qrb-border: #333c48;
+  --qrb-accent: #4d94ff;
+  --qrb-accent-ink: #0b1220;
+  --qrb-error: #ff8a80;
   max-width: 860px;
   margin: 0 auto;
   padding: 16px;
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--qrb-fg);
+  background: var(--qrb-page);
+  color-scheme: dark;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
-@media (prefers-color-scheme: dark) {
-  .qrb-app {
-    --qrb-fg: #e8ebef;
-    --qrb-muted: #9aa3af;
-    --qrb-card: #1a2029;
-    --qrb-page: #12161c;
-    --qrb-border: #333c48;
-    --qrb-accent: #4d94ff;
-    --qrb-accent-ink: #0b1220;
-    --qrb-error: #ff8a80;
-  }
-  .qrb-app .qrb-preview { background: #fff; }
-}
+.qrb-app select option { background: var(--qrb-card); color: var(--qrb-fg); }
 .qrb-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 .qrb-header h2 { margin: 0; font-size: 24px; }
 .qrb-sub { color: var(--qrb-muted); margin-bottom: 16px; }
@@ -1409,7 +1407,7 @@ const BASE_CSS: &str = r#"
 .qrb-textarea { min-height: 96px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 .qrb-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
 .qrb-field { flex: 1 1 150px; min-width: 140px; }
-.qrb-color { width: 100%; height: 36px; padding: 2px; box-sizing: border-box; background: var(--qrb-page); border: 1px solid var(--qrb-border); border-radius: 6px; }
+.qrb-color { width: 100%; height: 36px; padding: 2px; box-sizing: border-box; background: var(--qrb-page); border: 1px solid var(--qrb-muted); border-radius: 6px; }
 .qrb-logo-buttons { display: flex; gap: 8px; }
 .qrb-btn {
   font: inherit; cursor: pointer;
@@ -1437,6 +1435,9 @@ const BASE_CSS: &str = r#"
 .qrb-upsell { border-color: var(--qrb-accent); }
 .qrb-upsell-copy { color: var(--qrb-muted); }
 .qrb-upsell-link { display: inline-block; margin-top: 8px; color: var(--qrb-accent); font-weight: 600; text-decoration: none; }
+.qrb-footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--qrb-border); text-align: center; font-size: 13px; }
+.qrb-footer-link { color: var(--qrb-accent); text-decoration: none; }
+.qrb-footer-link:hover { text-decoration: underline; }
 .qrb-checks { align-items: center; }
 .qrb-check { display: flex; align-items: center; gap: 6px; font-size: 14px; }
 .qrb-check input { accent-color: var(--qrb-accent); }
